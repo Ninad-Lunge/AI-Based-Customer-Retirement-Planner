@@ -1,7 +1,5 @@
 An AI-based model for predicting stocks tailoring to risk taking capabilities of the user. AI model is based on the Long Short Term Memory (LSTM) Model, which analyzes the past trend of the stock and produces percentage wise allocation of monthly amount for a particular user.
 
-<h2>Demo Video</h2>
-
 [![Demo-Video](https://img.youtube.com/vi/KU8I8S-YWFY/1.jpg)](https://www.youtube.com/watch?v=KU8I8S-YWFY)
 
 Check the deployment here:
