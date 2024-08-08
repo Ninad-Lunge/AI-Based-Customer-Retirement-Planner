@@ -1,6 +1,7 @@
 An AI-based model for predicting stocks tailoring to risk taking capabilities of the user. AI model is based on the Long Short Term Memory (LSTM) Model, which analyzes the past trend of the stock and produces percentage wise allocation of monthly amount for a particular user.
 
-[![Demo Video](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=KU8I8S-YWFY)
+[![Demo Video](![image](https://github.com/user-attachments/assets/f973ef9e-50b1-4182-9039-bd09c46c78d5)
+)](https://www.youtube.com/watch?v=KU8I8S-YWFY)
 
 Check the deployment here:
 [https://customer-retirement-planner.vercel.app/Plan]
