@@ -4,9 +4,6 @@ An AI-based model for predicting stocks tailoring to risk taking capabilities of
 
 [![Demo-Video](https://img.youtube.com/vi/KU8I8S-YWFY/maxresdefault.jpg)](https://www.youtube.com/watch?v=KU8I8S-YWFY)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/VIDEO_ID" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe
-                                                                                                                                                                                                
-
 Check the deployment here:
 [https://customer-retirement-planner.vercel.app/Plan]
 
