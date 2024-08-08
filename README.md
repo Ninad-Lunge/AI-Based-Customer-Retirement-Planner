@@ -2,7 +2,7 @@ An AI-based model for predicting stocks tailoring to risk taking capabilities of
 
 <h3>Demo Video</h3>
 
-[![Demo-Video](https://img.youtube.com/vi/KU8I8S-YWFY/3.jpg)](https://www.youtube.com/watch?v=KU8I8S-YWFY)
+<h1>[![Demo-Video](https://img.youtube.com/vi/KU8I8S-YWFY/1.jpg)](https://www.youtube.com/watch?v=KU8I8S-YWFY)</h1>
 
 Check the deployment here:
 [https://customer-retirement-planner.vercel.app/Plan]
