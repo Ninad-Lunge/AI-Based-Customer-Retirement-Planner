@@ -6,6 +6,7 @@ Runs against a throwaway SQLite store populated via the Phase 2 jobs with a
 deterministic fake price source. No network, no TensorFlow in the engine path.
 """
 
+import zlib
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -17,7 +18,7 @@ class _FakeSource:
         self.days = days
 
     def fetch_ohlcv(self, ticker, period="5y"):
-        rng = np.random.default_rng(abs(hash(ticker)) % (2**32))
+        rng = np.random.default_rng(zlib.crc32(ticker.encode()) % (2**32))
         base = datetime(2022, 1, 1, tzinfo=timezone.utc)
         p = 100.0
         rows = []

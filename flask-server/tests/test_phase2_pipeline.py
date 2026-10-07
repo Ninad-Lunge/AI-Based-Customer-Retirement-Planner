@@ -8,6 +8,7 @@ Runs against a throwaway SQLite database with a deterministic FAKE price source
 during development.
 """
 
+import zlib
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -36,7 +37,7 @@ class _FakeSource:
         self.seed = seed
 
     def fetch_ohlcv(self, ticker, period="5y"):
-        rng = np.random.default_rng(abs(hash(ticker)) % (2**32) ^ self.seed)
+        rng = np.random.default_rng((zlib.crc32(ticker.encode()) % (2**32)) ^ self.seed)
         base = datetime(2024, 1, 1, tzinfo=timezone.utc)
         price = 100.0
         rows = []

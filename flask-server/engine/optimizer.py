@@ -131,38 +131,60 @@ def optimize(
     mu_s = pd.Series(mu_arr, index=tickers)
     cov_df = pd.DataFrame(sigma_arr, index=tickers, columns=tickers)
 
-    ef = EfficientFrontier(mu_s, cov_df, weight_bounds=bounds)
+    def _build_ef():
+        """Fresh EfficientFrontier (cvxpy problems are single-use) with the
+        same baseline bounds + asset-class caps applied."""
+        ef = EfficientFrontier(mu_s, cov_df, weight_bounds=bounds)
+        if asset_class_caps and asset_class_of:
+            for cls, limits in asset_class_caps.items():
+                idx = [i for i, t in enumerate(tickers) if asset_class_of.get(t) == cls]
+                if not idx:
+                    continue
+                lo = limits.get("min")
+                hi = limits.get("max")
+                if hi is not None:
+                    ef.add_constraint(lambda w, idx=idx, hi=hi: sum(w[i] for i in idx) <= hi)
+                if lo is not None:
+                    ef.add_constraint(lambda w, idx=idx, lo=lo: sum(w[i] for i in idx) >= lo)
+        return ef
 
-    # Asset-class caps: L_c <= sum_{i in c} w_i <= H_c  (linear constraints).
-    if asset_class_caps and asset_class_of:
-        for cls, limits in asset_class_caps.items():
-            idx = [i for i, t in enumerate(tickers) if asset_class_of.get(t) == cls]
-            if not idx:
-                continue
-            lo = limits.get("min")
-            hi = limits.get("max")
-            if hi is not None:
-                ef.add_constraint(lambda w, idx=idx, hi=hi: sum(w[i] for i in idx) <= hi)
-            if lo is not None:
-                ef.add_constraint(lambda w, idx=idx, lo=lo: sum(w[i] for i in idx) >= lo)
+    def _min_variance():
+        ef = _build_ef()
+        ef.min_volatility()
+        return ef.clean_weights()
 
-    try:
-        if objective == "max_sharpe":
-            # max_sharpe is undefined if no asset's return exceeds the risk-free
-            # rate; fall back to min_variance in that degenerate case.
-            if np.nanmax(mu_arr) <= risk_free_rate:
-                logger.info("All expected returns <= risk-free; using min_variance.")
-                ef.min_volatility()
-            else:
+    cleaned = None
+    if objective == "max_sharpe":
+        # max_sharpe is undefined if no asset's return exceeds the risk-free
+        # rate; use min_variance in that degenerate case.
+        if np.nanmax(mu_arr) <= risk_free_rate:
+            logger.info("All expected returns <= risk-free; using min_variance.")
+            cleaned = _min_variance()
+        else:
+            try:
+                ef = _build_ef()
                 ef.max_sharpe(risk_free_rate=risk_free_rate)
-        else:  # min_variance
-            ef.min_volatility()
-        cleaned = ef.clean_weights()
-    except Exception as exc:  # noqa: BLE001 - solver failure => infeasible
-        raise InfeasibleError(
-            "The optimizer could not find a feasible portfolio under the given "
-            "constraints. Try relaxing asset-class caps or exclusions."
-        ) from exc
+                cleaned = ef.clean_weights()
+            except Exception as exc:  # noqa: BLE001
+                # A max-Sharpe SOLVER failure (DCP / convergence on a particular
+                # solver build) is NOT user infeasibility — fall back to the
+                # robust min-variance portfolio rather than returning a 422.
+                logger.warning("max_sharpe solve failed (%s); falling back to min_variance.", exc)
+                try:
+                    cleaned = _min_variance()
+                except Exception as exc2:  # noqa: BLE001
+                    raise InfeasibleError(
+                        "The optimizer could not find a feasible portfolio under the given "
+                        "constraints. Try relaxing asset-class caps or exclusions."
+                    ) from exc2
+    else:  # min_variance (and risk_parity handled earlier)
+        try:
+            cleaned = _min_variance()
+        except Exception as exc:  # noqa: BLE001
+            raise InfeasibleError(
+                "The optimizer could not find a feasible portfolio under the given "
+                "constraints. Try relaxing asset-class caps or exclusions."
+            ) from exc
 
     weights = {t: float(cleaned.get(t, 0.0)) for t in tickers}
     total = sum(weights.values())
