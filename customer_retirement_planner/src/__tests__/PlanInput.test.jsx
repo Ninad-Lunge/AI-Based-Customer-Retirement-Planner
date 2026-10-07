@@ -77,6 +77,30 @@ test('submits the 5 base fields and renders the returned strategy', async () => 
   expect(screen.getAllByText(/NIFTYBEES\.NS/).length).toBeGreaterThan(0);
 });
 
+test('omits stepUpPercent from the payload when left blank (backward compatible)', async () => {
+  axios.post.mockResolvedValueOnce({ data: mockStrategy });
+  render(<PlanInput />);
+  fillAndSubmit();
+  await waitFor(() => expect(axios.post).toHaveBeenCalledTimes(1));
+  const [, body] = axios.post.mock.calls[0];
+  expect(body).not.toHaveProperty('stepUpPercent');
+});
+
+test('sends stepUpPercent as a number when provided', async () => {
+  axios.post.mockResolvedValueOnce({ data: mockStrategy });
+  render(<PlanInput />);
+  fireEvent.change(screen.getByLabelText(/Current Age/i), { target: { value: '30' } });
+  fireEvent.change(screen.getByLabelText(/Retirement Age/i), { target: { value: '60' } });
+  fireEvent.change(screen.getByLabelText(/Desired Retirement Fund/i), { target: { value: '10000000' } });
+  fireEvent.change(screen.getByLabelText(/Monthly Investment/i), { target: { value: '15000' } });
+  fireEvent.change(screen.getByLabelText(/Yearly Step-Up/i), { target: { value: '10' } });
+  fireEvent.click(screen.getByRole('radio', { name: /Medium/i }));
+  fireEvent.click(screen.getByRole('button', { name: /Generate Strategy/i }));
+  await waitFor(() => expect(axios.post).toHaveBeenCalledTimes(1));
+  const [, body] = axios.post.mock.calls[0];
+  expect(body.stepUpPercent).toBe(10);
+});
+
 test('shows a validation error and does not post when fields are empty', () => {
   render(<PlanInput />);
   fireEvent.click(screen.getByRole('button', { name: /Generate Strategy/i }));

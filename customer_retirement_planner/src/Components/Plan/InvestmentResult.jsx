@@ -208,6 +208,12 @@ const InvestmentResult = ({ formData, investmentStrategy }) => {
             <div className="k">Risk</div>
             <div className="v">{capitalize(formData.riskCategory)}</div>
           </div>
+          {Number(formData.stepUpPercent) > 0 && (
+            <div className="ir-input-chip">
+              <div className="k">Yearly Step-Up</div>
+              <div className="v">{Number(formData.stepUpPercent)}%</div>
+            </div>
+          )}
         </div>
       </div>
 

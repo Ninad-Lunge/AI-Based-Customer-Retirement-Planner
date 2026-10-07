@@ -16,6 +16,16 @@ const FIELDS = [
   { name: 'retirementAge', label: 'Retirement Age', placeholder: 'e.g. 60', min: 19, max: 100 },
   { name: 'desiredFund', label: 'Desired Retirement Fund', placeholder: 'e.g. 10000000', min: 1, prefix: '₹' },
   { name: 'monthlyInvestment', label: 'Monthly Investment', placeholder: 'e.g. 15000', min: 1, prefix: '₹' },
+  {
+    name: 'stepUpPercent',
+    label: 'Yearly Step-Up (optional)',
+    placeholder: 'e.g. 10',
+    min: 0,
+    max: 25,
+    suffix: '%',
+    optional: true,
+    hint: 'Increase your monthly amount by this % each year to reach goals faster.',
+  },
 ];
 
 const PlanInput = () => {
@@ -25,6 +35,7 @@ const PlanInput = () => {
     desiredFund: '',
     monthlyInvestment: '',
     riskCategory: '',
+    stepUpPercent: '',
   });
 
   const [validationErrors, setValidationErrors] = useState({});
@@ -53,6 +64,12 @@ const PlanInput = () => {
     else if (monthlyInvestment <= 0) errors.monthlyInvestment = 'Must be greater than 0.';
 
     if (!formData.riskCategory) errors.riskCategory = 'Please select a risk preference.';
+
+    // Optional: yearly step-up. Only validated if the user entered something.
+    if (formData.stepUpPercent !== '' && formData.stepUpPercent !== null && formData.stepUpPercent !== undefined) {
+      const stepUp = Number(formData.stepUpPercent);
+      if (isNaN(stepUp) || stepUp < 0 || stepUp > 25) errors.stepUpPercent = 'Must be between 0 and 25.';
+    }
 
     return errors;
   };
@@ -83,7 +100,15 @@ const PlanInput = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/investment-strategy`, formData);
+      // Build the payload: send stepUpPercent only when provided (empty -> omit,
+      // so the backend applies its default of 0 and the base flow is unchanged).
+      const payload = { ...formData };
+      if (payload.stepUpPercent === '' || payload.stepUpPercent === null || payload.stepUpPercent === undefined) {
+        delete payload.stepUpPercent;
+      } else {
+        payload.stepUpPercent = Number(payload.stepUpPercent);
+      }
+      const response = await axios.post(`${API_URL}/investment-strategy`, payload);
       setInvestmentStrategy(response.data);
     } catch (err) {
       const message =
@@ -129,7 +154,7 @@ const PlanInput = () => {
             {FIELDS.map((f) => (
               <div className="field" key={f.name}>
                 <label htmlFor={f.name}>{f.label}</label>
-                <div className={`field-input${f.prefix ? ' has-prefix' : ''}${validationErrors[f.name] ? ' invalid' : ''}`}>
+                <div className={`field-input${f.prefix ? ' has-prefix' : ''}${f.suffix ? ' has-suffix' : ''}${validationErrors[f.name] ? ' invalid' : ''}`}>
                   {f.prefix && <span className="field-prefix">{f.prefix}</span>}
                   <input
                     type="number"
@@ -143,7 +168,11 @@ const PlanInput = () => {
                     aria-invalid={!!validationErrors[f.name]}
                     aria-describedby={validationErrors[f.name] ? `${f.name}-error` : undefined}
                   />
+                  {f.suffix && <span className="field-suffix">{f.suffix}</span>}
                 </div>
+                {f.hint && !validationErrors[f.name] && (
+                  <div className="field-hint">{f.hint}</div>
+                )}
                 {validationErrors[f.name] && (
                   <div id={`${f.name}-error`} className="field-error" role="alert">
                     {validationErrors[f.name]}

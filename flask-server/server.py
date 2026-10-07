@@ -105,6 +105,7 @@ except Exception:  # noqa: BLE001 - persistence wiring must never block startup
 MIN_AGE = 18
 MAX_AGE = 100
 VALID_RISK_CATEGORIES = {"low", "medium", "high"}
+MAX_STEP_UP = 25.0  # max yearly step-up to the monthly SIP (percent)
 
 
 def _error_response(message, status_code, details=None):
@@ -210,6 +211,20 @@ def _validate_payload(data):
             {"riskCategory": risk_category},
         )
 
+    # Optional yearly step-up to the monthly SIP (default 0 = fixed SIP).
+    step_up_percent = 0.0
+    if data.get("stepUpPercent") is not None:
+        try:
+            step_up_percent = float(data["stepUpPercent"])
+        except (TypeError, ValueError):
+            return None, ("'stepUpPercent' must be a number.", 400, None)
+        if not (0.0 <= step_up_percent <= MAX_STEP_UP):
+            return None, (
+                f"'stepUpPercent' must be between 0 and {MAX_STEP_UP}.",
+                400,
+                {"stepUpPercent": step_up_percent},
+            )
+
     parsed = {
         "current_age": current_age,
         "retirement_age": retirement_age,
@@ -217,6 +232,7 @@ def _validate_payload(data):
         "monthly_investment": monthly_investment,
         "risk_category": risk_category,
         "years_to_invest": retirement_age - current_age,
+        "step_up_percent": step_up_percent,
     }
     return parsed, None
 
@@ -422,6 +438,7 @@ def _try_mpt_recommendation(data, parsed):
             preferences=preferences,
             options=options,
             price_returns=price_returns,
+            step_up_percent=parsed.get("step_up_percent", 0.0),
         )
         logger.info(
             "engine timing: MPT recommend took %.1f ms (request_id=%s)",
@@ -506,6 +523,7 @@ def _write_audit_log(inputs, parsed, objective, profile, preferences, options, p
                     "desiredFund": parsed["desired_fund"],
                     "monthlyInvestment": parsed["monthly_investment"],
                     "riskCategory": parsed["risk_category"],
+                    "stepUpPercent": parsed.get("step_up_percent", 0.0),
                     "objective": objective,
                     "profile": profile or {},
                     "preferences": preferences or {},
@@ -597,6 +615,7 @@ def investment_strategy():
             parsed["desired_fund"],
             parsed["monthly_investment"],
             parsed["risk_category"],
+            parsed.get("step_up_percent", 0.0),
         )
         logger.info(
             "engine timing: suggest_investment took %.1f ms (request_id=%s)",

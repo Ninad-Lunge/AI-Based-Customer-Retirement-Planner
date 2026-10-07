@@ -45,6 +45,54 @@ def portfolio_moments(weights: Dict[str, float], tickers: List[str], mu: List[fl
     return mu_p, sigma_p
 
 
+def _fv_vector(monthly_investment: float, monthly_rate, months: int, step_up_percent: float = 0.0):
+    """
+    Vectorised future value of a monthly SIP over an array of monthly rates.
+
+    With ``step_up_percent == 0`` this is the closed-form annuity (unchanged).
+    Otherwise the contribution escalates by step_up_percent each year and the
+    balance is accumulated year-by-year (vectorised across the rate array).
+    """
+    monthly_rate = np.asarray(monthly_rate, dtype=float)
+    if not step_up_percent or step_up_percent == 0.0:
+        return monthly_investment * (((1.0 + monthly_rate) ** months - 1.0) / monthly_rate)
+
+    step = step_up_percent / 100.0
+    fv = np.zeros_like(monthly_rate)
+    payment_factor = 1.0
+    months_left = months
+    year = 0
+    while months_left > 0:
+        if year > 0:
+            payment_factor *= (1 + step)
+        m = min(12, months_left)
+        growth = (1.0 + monthly_rate) ** m
+        fv = fv * growth + monthly_investment * payment_factor * ((growth - 1.0) / monthly_rate)
+        months_left -= m
+        year += 1
+    return fv
+
+
+def _total_contributions(monthly_investment: float, months: int, step_up_percent: float = 0.0) -> float:
+    """Total nominal contributions, accounting for an optional yearly step-up."""
+    if not step_up_percent or step_up_percent == 0.0:
+        return monthly_investment * months
+    step = step_up_percent / 100.0
+    total = 0.0
+    payment = monthly_investment
+    months_left = months
+    year = 0
+    while months_left > 0:
+        if year > 0:
+            payment *= (1 + step)
+        m = min(12, months_left)
+        total += payment * m
+        months_left -= m
+        year += 1
+    return total
+
+
+
 def project(
     weights: Dict[str, float],
     tickers: List[str],
@@ -55,9 +103,14 @@ def project(
     target_fund: float,
     simulations: int = DEFAULT_SIMS,
     seed: int | None = None,
+    step_up_percent: float = 0.0,
 ) -> dict:
     """
     Run the portfolio-level Monte Carlo projection.
+
+    ``step_up_percent`` (default 0) escalates the monthly contribution by that
+    percentage at the start of each year (a step-up SIP), which raises the
+    projected corpus and goal probability for the same starting amount.
 
     Returns a dict with both the new `projection` fields and the legacy
     response keys so the API response stays backward compatible.
@@ -71,10 +124,9 @@ def project(
     monthly_rate = (1.0 + annual) ** (1.0 / 12.0) - 1.0
     monthly_rate = np.where(monthly_rate == 0, 1e-12, monthly_rate)
 
-    # FV of annuity: P * ((1+r)^n - 1) / r
-    fv = monthly_investment * (((1.0 + monthly_rate) ** months - 1.0) / monthly_rate)
+    fv = _fv_vector(monthly_investment, monthly_rate, months, step_up_percent)
 
-    total_invested = monthly_investment * months
+    total_invested = _total_contributions(monthly_investment, months, step_up_percent)
     p5 = float(np.percentile(fv, 5))
     p50 = float(np.percentile(fv, 50))
     p90 = float(np.percentile(fv, 90))
@@ -88,7 +140,7 @@ def project(
     det_monthly = (1.0 + max(mu_p, -0.99)) ** (1.0 / 12.0) - 1.0
     if det_monthly == 0:
         det_monthly = 1e-12
-    total_fv = monthly_investment * (((1.0 + det_monthly) ** months - 1.0) / det_monthly)
+    total_fv = float(_fv_vector(monthly_investment, np.array([det_monthly]), months, step_up_percent)[0])
 
     return {
         # New additive projection object.

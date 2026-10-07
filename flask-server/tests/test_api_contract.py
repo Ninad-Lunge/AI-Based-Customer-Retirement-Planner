@@ -69,6 +69,38 @@ def test_investment_strategy_happy_path(flask_client, valid_payload):
 
 
 # --------------------------------------------------------------------------- #
+# Optional yearly step-up (stepUpPercent)
+# --------------------------------------------------------------------------- #
+
+def test_stepup_accepted_and_increases_corpus(flask_client, valid_payload):
+    import numpy as np
+
+    np.random.seed(0)
+    base = flask_client.post("/investment-strategy", json=valid_payload).get_json()
+    np.random.seed(0)
+    stepped = flask_client.post(
+        "/investment-strategy", json={**valid_payload, "stepUpPercent": 10}
+    ).get_json()
+    assert stepped["Total Future Value (INR)"] > base["Total Future Value (INR)"]
+
+
+def test_stepup_omitted_is_backward_compatible(flask_client, valid_payload):
+    # No stepUpPercent -> 200 and valid result (unchanged behaviour).
+    resp = flask_client.post("/investment-strategy", json=valid_payload)
+    assert resp.status_code == 200
+
+
+def test_stepup_out_of_range_returns_400(flask_client, valid_payload):
+    resp = flask_client.post("/investment-strategy", json={**valid_payload, "stepUpPercent": 50})
+    assert resp.status_code == 400
+
+
+def test_stepup_non_numeric_returns_400(flask_client, valid_payload):
+    resp = flask_client.post("/investment-strategy", json={**valid_payload, "stepUpPercent": "lots"})
+    assert resp.status_code == 400
+
+
+# --------------------------------------------------------------------------- #
 # Request-body / JSON errors
 # --------------------------------------------------------------------------- #
 

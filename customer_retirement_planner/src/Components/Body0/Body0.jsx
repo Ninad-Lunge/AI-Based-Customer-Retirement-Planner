@@ -8,10 +8,29 @@ const FEATURES = [
   { title: 'Goal-Aware', desc: 'Projects whether you hit your target.' },
 ];
 
+const STEPS = [
+  {
+    n: '1',
+    title: 'Tell us your goals',
+    desc: 'Your age, target corpus, monthly amount and risk appetite — plus an optional yearly step-up to grow your SIP over time.',
+  },
+  {
+    n: '2',
+    title: 'We optimize a portfolio',
+    desc: 'A Modern Portfolio Theory optimizer builds a diversified allocation from historical returns and a shrinkage covariance estimate.',
+  },
+  {
+    n: '3',
+    title: 'See the evidence',
+    desc: 'A historical backtest and a Monte Carlo projection show the likely range of outcomes and your probability of hitting the goal.',
+  },
+];
+
 const Body0 = () => {
   const navigate = useNavigate();
 
   return (
+    <>
     <section className="hero-section cont">
       <div className="hero-grid">
         <div className="hero-copy">
@@ -85,6 +104,24 @@ const Body0 = () => {
         </div>
       </div>
     </section>
+
+    {/* How it works — target for the hero "How it works" anchor */}
+    <section id="how-it-works" className="how-section cont">
+      <h2 className="how-title">How it works</h2>
+      <p className="how-sub">From your goals to an evidence-backed plan in three steps.</p>
+      <ol className="how-steps">
+        {STEPS.map((s) => (
+          <li key={s.n} className="how-step">
+            <span className="how-step-num">{s.n}</span>
+            <div>
+              <strong>{s.title}</strong>
+              <span>{s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+    </>
   );
 };
 

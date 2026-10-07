@@ -39,11 +39,29 @@ DISCLAIMER_TEXT = (
 )
 
 
-def _fv_annuity(monthly_payment: float, annual_return_pct: float, months: int) -> float:
+def _fv_annuity(monthly_payment: float, annual_return_pct: float, months: int, step_up_percent: float = 0.0) -> float:
     r = annual_return_pct / 100.0 / 12.0
-    if r == 0:
-        return monthly_payment * months
-    return monthly_payment * (((1 + r) ** months - 1) / r)
+    step = step_up_percent / 100.0
+    if step == 0.0:
+        if r == 0:
+            return monthly_payment * months
+        return monthly_payment * (((1 + r) ** months - 1) / r)
+    # Step-up SIP: escalate the payment each year, accumulate year by year.
+    balance = 0.0
+    payment = monthly_payment
+    months_left = months
+    year = 0
+    while months_left > 0:
+        if year > 0:
+            payment *= (1 + step)
+        m = min(12, months_left)
+        if r == 0:
+            balance += payment * m
+        else:
+            balance = balance * ((1 + r) ** m) + payment * (((1 + r) ** m - 1) / r)
+        months_left -= m
+        year += 1
+    return balance
 
 
 def recommend(
@@ -60,6 +78,7 @@ def recommend(
     price_returns=None,
     risk_free_rate: float = 0.07,
     rng_seed: Optional[int] = None,
+    step_up_percent: float = 0.0,
 ) -> dict:
     """Produce the full recommendation response from store inputs + request.
 
@@ -116,7 +135,7 @@ def recommend(
                 "Investment Percentage": round(w * 100.0, 2),
                 "Annual Return (%)": round(annual_ret_pct, 2),
                 "Risk Profile": risk_profile,
-                "Future Value (INR)": round(_fv_annuity(monthly_investment * w, annual_ret_pct, months), 2),
+                "Future Value (INR)": round(_fv_annuity(monthly_investment * w, annual_ret_pct, months, step_up_percent), 2),
             }
         )
     suggestions.sort(key=lambda s: s["Investment Percentage"], reverse=True)
@@ -141,6 +160,7 @@ def recommend(
         weights, cres.tickers, mu_bl, cres.sigma,
         monthly_investment=monthly_investment, months=months,
         target_fund=target_fund, simulations=sims, seed=rng_seed,
+        step_up_percent=step_up_percent,
     )
     mc["projection"]["rngSeed"] = rng_seed
 
@@ -164,6 +184,7 @@ def recommend(
         "simulations": sims,
         "rngSeed": rng_seed,
         "lstmViewApplied": lstm_applied,
+        "stepUpPercent": step_up_percent,
     }
     optimizer_config["configHash"] = hashlib.sha256(
         json.dumps(optimizer_config, sort_keys=True).encode()
@@ -226,4 +247,5 @@ def reproduce(audit_row: dict, inputs: dict, price_returns=None) -> dict:
         options=snap.get("options") or {},
         price_returns=price_returns,
         rng_seed=seed,
+        step_up_percent=float(snap.get("stepUpPercent", cfg.get("stepUpPercent", 0.0)) or 0.0),
     )

@@ -320,43 +320,77 @@ def _calculate_future_value(
     monthly_payment: float,
     annual_return_pct: float,
     total_months: int,
+    step_up_percent: float = 0.0,
 ) -> float:
     """
-    Calculate the future value of a series of equal monthly investments
-    using the future-value-of-an-annuity formula.
+    Future value of a monthly SIP, optionally with a yearly step-up.
 
-    FV = P * [((1 + r)^n - 1) / r]
-    where r = annual_return_pct / 100 / 12, n = total_months.
+    With ``step_up_percent == 0`` (default) this is the standard
+    future-value-of-an-annuity:
+
+        FV = P * [((1 + r)^n - 1) / r],  r = annual_return_pct/100/12, n = months.
+
+    With a step-up, the monthly contribution increases by ``step_up_percent``
+    at the start of each new year (every 12 months). We accumulate year by
+    year: each year's 12 equal monthly deposits compound within the year, and
+    the running balance compounds forward into subsequent years. This models a
+    "step-up SIP" where you raise your monthly amount annually (e.g. with pay
+    rises), which materially improves goal attainment for the same start amount.
     """
     monthly_rate = annual_return_pct / 100.0 / 12.0
-    if monthly_rate == 0:
-        return monthly_payment * total_months
-    return monthly_payment * (((1 + monthly_rate) ** total_months - 1) / monthly_rate)
+    step = step_up_percent / 100.0
+
+    # Fast path: no step-up -> the closed-form annuity (unchanged behaviour).
+    if step == 0.0:
+        if monthly_rate == 0:
+            return monthly_payment * total_months
+        return monthly_payment * (((1 + monthly_rate) ** total_months - 1) / monthly_rate)
+
+    balance = 0.0
+    payment = monthly_payment
+    months_left = total_months
+    year = 0
+    while months_left > 0:
+        if year > 0:
+            payment *= (1 + step)  # escalate at each year boundary
+        m = min(12, months_left)
+        # Compound the existing balance through this year's m months, and add
+        # this year's m monthly deposits (each compounding to year-end).
+        if monthly_rate == 0:
+            balance = balance + payment * m
+        else:
+            balance = balance * ((1 + monthly_rate) ** m)
+            balance += payment * (((1 + monthly_rate) ** m - 1) / monthly_rate)
+        months_left -= m
+        year += 1
+    return balance
 
 
 def _required_annual_return(
     target_fund: float,
     monthly_payment: float,
     total_months: int,
+    step_up_percent: float = 0.0,
 ) -> float:
     """
     Invert the FV-of-annuity formula to find the annual return needed to
-    reach *target_fund* given a fixed monthly SIP of *monthly_payment* over
-    *total_months*.
+    reach *target_fund* given a monthly SIP of *monthly_payment* over
+    *total_months*, optionally escalating by *step_up_percent* each year.
 
     Uses scipy-free bisection search over the range [0%, 200%].
     """
     if monthly_payment <= 0 or total_months <= 0:
         return 0.0
 
-    # Trivial case: can we reach the target with 0% return?
-    if monthly_payment * total_months >= target_fund:
+    # Trivial case: can we reach the target with 0% return? (Step-up still
+    # grows total contributions, so compute the 0%-return FV with step-up.)
+    if _calculate_future_value(monthly_payment, 0.0, total_months, step_up_percent) >= target_fund:
         return 0.0
 
     lo, hi = 0.0, 200.0  # annual return % search bounds
     for _ in range(100):  # bisection iterations (converges to ~1e-30)
         mid = (lo + hi) / 2.0
-        fv = _calculate_future_value(monthly_payment, mid, total_months)
+        fv = _calculate_future_value(monthly_payment, mid, total_months, step_up_percent)
         if fv < target_fund:
             lo = mid
         else:
@@ -600,6 +634,7 @@ def suggest_investment(
     target_fund: float,
     monthly_investment: float,
     risk_category: str,
+    step_up_percent: float = 0.0,
 ) -> Dict:
     """
     Suggest a diversified investment allocation based on LSTM-predicted stock
@@ -640,7 +675,7 @@ def suggest_investment(
     P: float = monthly_investment
 
     # ---- required annual return via proper FV-of-annuity inversion ----
-    req_return = _required_annual_return(target_fund, P, n)
+    req_return = _required_annual_return(target_fund, P, n, step_up_percent)
     logger.debug("Required annual return to reach target: %.2f%%.", req_return)
 
     # ---- select stocks that meet the return threshold ----
@@ -676,7 +711,7 @@ def suggest_investment(
     if not allocation:
         best = df.iloc[0]
         best_return = best["Annual Return (%)"]
-        future_value = _calculate_future_value(P, best_return, n)
+        future_value = _calculate_future_value(P, best_return, n, step_up_percent)
         logger.info(
             "Goal unreachable. Best stock '%s' yields %.2f INR vs target %.2f.",
             best["Stock Name"], future_value, target_fund,
@@ -691,9 +726,11 @@ def suggest_investment(
 
     # ---- compute per-stock future values ----
     future_values: List[Tuple[str, float, str, float]] = []
-    total_invested = P * n
+    # Total contributions. With a step-up, each year's monthly amount escalates,
+    # so sum the per-year contributions rather than P*n.
+    total_invested = _calculate_future_value(P, 0.0, n, step_up_percent)
     for stock, return_rate, risk in allocation:
-        fv = _calculate_future_value(P, return_rate, n)
+        fv = _calculate_future_value(P, return_rate, n, step_up_percent)
         future_values.append((stock, return_rate, risk, fv))
 
     # ---- allocation weights by Sharpe Ratio ----
@@ -767,8 +804,26 @@ def suggest_investment(
     # Avoid exact zero monthly rate (would cause division by zero in FV formula).
     monthly_rate = np.where(monthly_rate == 0, 1e-12, monthly_rate)
 
-    # FV of annuity: P * [((1+r)^n - 1) / r]
-    fv_matrix = P * (((1 + monthly_rate) ** n - 1) / monthly_rate)
+    if step_up_percent and step_up_percent != 0.0:
+        # Step-up SIP: contributions escalate by step_up_percent each year.
+        # Accumulate year by year across the whole simulation matrix.
+        step = step_up_percent / 100.0
+        fv_matrix = np.zeros_like(monthly_rate)
+        payment_factor = 1.0  # P * payment_factor is the current monthly amount
+        months_left = n
+        year = 0
+        while months_left > 0:
+            if year > 0:
+                payment_factor *= (1 + step)
+            m = min(12, months_left)
+            growth = (1 + monthly_rate) ** m
+            fv_matrix = fv_matrix * growth
+            fv_matrix += P * payment_factor * ((growth - 1) / monthly_rate)
+            months_left -= m
+            year += 1
+    else:
+        # FV of annuity: P * [((1+r)^n - 1) / r]
+        fv_matrix = P * (((1 + monthly_rate) ** n - 1) / monthly_rate)
 
     # Weight each stock's FV by allocation %, sum across stocks.
     final_values = (fv_matrix * weights).sum(axis=1)  # (MC_SIMULATIONS,)

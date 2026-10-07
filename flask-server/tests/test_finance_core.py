@@ -50,6 +50,46 @@ class TestCalculateFutureValue:
 
 
 # --------------------------------------------------------------------------- #
+# Step-up SIP (yearly escalation of the monthly contribution)
+# --------------------------------------------------------------------------- #
+
+class TestStepUp:
+    def test_zero_stepup_matches_closed_form(self):
+        # step_up=0 must reproduce the plain annuity exactly (backward compat).
+        P, r, n = 15000, 12.0, 360
+        baseline = eng._calculate_future_value(P, r, n)
+        with_zero = eng._calculate_future_value(P, r, n, 0.0)
+        assert with_zero == pytest.approx(baseline, rel=1e-12)
+
+    def test_stepup_increases_corpus(self):
+        P, r, n = 15000, 12.0, 360
+        base = eng._calculate_future_value(P, r, n, 0.0)
+        stepped = eng._calculate_future_value(P, r, n, 10.0)
+        assert stepped > base
+
+    def test_stepup_increases_total_contributions(self):
+        # FV at 0% return = total nominal contributions; step-up grows it beyond P*n.
+        P, n = 15000, 360
+        assert eng._calculate_future_value(P, 0.0, n, 10.0) > P * n
+
+    def test_stepup_lowers_required_return(self):
+        target, P, n = 20_000_000, 15000, 360
+        req0 = eng._required_annual_return(target, P, n, 0.0)
+        req10 = eng._required_annual_return(target, P, n, 10.0)
+        assert req10 < req0
+
+    def test_suggest_investment_accepts_stepup(self, synthetic_metrics_df):
+        import numpy as np
+
+        np.random.seed(0)
+        base = eng.suggest_investment(synthetic_metrics_df, 30, 10_000_000, 15_000, "medium", 0.0)
+        np.random.seed(0)
+        stepped = eng.suggest_investment(synthetic_metrics_df, 30, 10_000_000, 15_000, "medium", 10.0)
+        assert "error" not in base and "error" not in stepped
+        assert stepped["Total Future Value (INR)"] > base["Total Future Value (INR)"]
+
+
+# --------------------------------------------------------------------------- #
 # _required_annual_return
 # --------------------------------------------------------------------------- #
 

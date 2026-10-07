@@ -201,6 +201,15 @@ class TestMonteCarlo:
         assert mc.project(w, t, mu, sigma, 15000, 360, 1e7, simulations=10)["projection"]["simulations"] == 1000
         assert mc.project(w, t, mu, sigma, 15000, 360, 1e7, simulations=10**9)["projection"]["simulations"] == 50000
 
+    def test_stepup_increases_projection(self):
+        from engine import montecarlo as mc
+
+        w, t, mu, sigma = self._args()
+        base = mc.project(w, t, mu, sigma, 15000, 360, 1e7, seed=42, step_up_percent=0.0)
+        stepped = mc.project(w, t, mu, sigma, 15000, 360, 1e7, seed=42, step_up_percent=10.0)
+        assert stepped["projection"]["p50"] > base["projection"]["p50"]
+        assert stepped["projection"]["goalProbability"] >= base["projection"]["goalProbability"]
+
 
 # --------------------------------------------------------------------------- #
 # Integration: expanded /v1 API against a populated store

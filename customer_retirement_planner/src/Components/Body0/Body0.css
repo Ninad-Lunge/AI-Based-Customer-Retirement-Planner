@@ -160,3 +160,62 @@
 @media (max-width: 420px) {
   .hero-art-chip { display: none; }
 }
+
+
+/* --------------------------------------------------------------------------- */
+/* How it works (anchor target for the hero "How it works" button)            */
+/* --------------------------------------------------------------------------- */
+html { scroll-behavior: smooth; }
+
+.how-section {
+  padding: 56px 0 72px;
+  scroll-margin-top: 80px; /* so the heading isn't hidden under a sticky navbar */
+}
+.how-title {
+  font-size: clamp(26px, 3.5vw, 36px);
+  font-weight: 800;
+  color: var(--ink-900, #0f172a);
+  margin: 0 0 8px;
+}
+.how-sub {
+  color: var(--ink-500, #475569);
+  margin: 0 0 32px;
+  font-size: 16px;
+}
+.how-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+.how-step {
+  display: flex;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line-200, #e2e8f0);
+  border-radius: 16px;
+  background: #fff;
+}
+.how-step-num {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  font-weight: 700;
+}
+.how-step strong {
+  display: block;
+  color: var(--ink-900, #0f172a);
+  margin-bottom: 6px;
+}
+.how-step span {
+  color: var(--ink-500, #475569);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
