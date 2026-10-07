@@ -1,0 +1,31 @@
+# Offline analytics/jobs image — TensorFlow-FREE.
+#
+# Runs the scheduled jobs (seed / ingest / analyze) against the shared DB. By
+# installing requirements-jobs.txt (no tensorflow/keras) this image is small and
+# not pinned by TF's CPython range. Default command runs the analytics job;
+# override in compose / the scheduler to run seed or ingest.
+#
+# Build:  docker build -f Dockerfile.jobs -t crp-jobs ./flask-server
+# Run:    docker run --rm -e DATABASE_URL=... crp-jobs python -m jobs analyze
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+COPY requirements-jobs.txt .
+RUN pip install -r requirements-jobs.txt
+
+# Copy the backend code (jobs/, db/, settings.py, alembic/, tickers.json, etc).
+COPY . .
+
+RUN useradd --create-home --uid 10002 jobsuser \
+    && chown -R jobsuser:jobsuser /app
+USER jobsuser
+
+# Default to the analytics job; compose/scheduler overrides for seed/ingest.
+CMD ["python", "-m", "jobs", "analyze"]

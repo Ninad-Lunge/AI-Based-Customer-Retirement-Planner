@@ -1,0 +1,19 @@
+# Dependencies for the offline jobs image (seed / ingest / analyze).
+#
+# Deliberately EXCLUDES tensorflow + keras: the analytics job computes metrics
+# and the Ledoit-Wolf covariance with numpy/pandas/scikit-learn only. Keeping TF
+# out of this image makes it small, fast to build, and free of the CPython
+# 3.9-3.12 pin that TF imposes. (The optional LSTM retraining job in Phase 3 is
+# a SEPARATE image that does include TF.)
+#
+# yfinance is included because it is the default dev ingestion source; in
+# production the ingestion source is swapped for the licensed provider.
+
+SQLAlchemy==2.0.35
+alembic==1.13.3
+psycopg[binary]==3.2.3
+pydantic-settings==2.5.2
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
+yfinance==1.7.0

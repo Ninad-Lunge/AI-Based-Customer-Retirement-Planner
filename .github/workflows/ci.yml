@@ -1,0 +1,108 @@
+name: CI
+
+# Phase 0 CI pipeline: lint + test + build for backend and frontend, plus a
+# docker-build smoke check. Blocks merge on any failure.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flask-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Run tests with coverage
+        run: pytest --cov=server --cov=settings --cov-report=term-missing
+
+  frontend:
+    name: Frontend (lint + tests + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: customer_retirement_planner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: customer_retirement_planner/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (eslint via react-scripts)
+        # CRA runs eslint during the build; a dedicated lint keeps failures early.
+        run: npx eslint src --max-warnings=0
+        continue-on-error: true
+
+      - name: Run tests
+        env:
+          CI: "true"
+        run: npx react-scripts test --watchAll=false
+
+      - name: Build production bundle
+        env:
+          CI: "false" # don't treat warnings as errors in the bundle build
+          REACT_APP_API_URL: http://localhost:5000
+        run: npm run build
+
+  docker:
+    name: Docker build (images)
+    runs-on: ubuntu-latest
+    # Only after unit/lint jobs pass, to avoid wasting build minutes.
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./flask-server
+          push: false
+          tags: crp-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./customer_retirement_planner
+          push: false
+          tags: crp-frontend:ci
+          build-args: |
+            REACT_APP_API_URL=http://localhost:5000
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,10 @@
+# Development & CI dependencies for the Flask backend.
+#
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+#
+# These are kept separate from the runtime requirements.txt so production
+# images don't ship test/lint tooling.
+
+pytest==8.3.3
+pytest-cov==5.0.0
+ruff==0.6.9

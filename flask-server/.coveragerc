@@ -1,0 +1,23 @@
+# Coverage configuration for the backend.
+#
+# We measure the *finance core* and the API layer. The data-ingestion / LSTM
+# code paths (fetch_stock_data and the ticker-config/cache I/O) require the
+# network and TensorFlow and are intentionally NOT unit-tested here; they are
+# excluded so the coverage number reflects the logic we can and do test.
+
+[run]
+branch = True
+source =
+    server
+    investment_strategy
+omit =
+    tests/*
+
+[report]
+# Lines/blocks excluded from coverage accounting with a reason.
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+show_missing = True

@@ -1,1 +1,16 @@
-venv
+# Backend-specific ignores (see the repo-root .gitignore for the full set).
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+.env
+.env.*
+!.env.example
+
+# Model artefacts (regenerated at runtime; moving to a store in Phase 2).
+saved_models/*_lstm.pkl
+saved_models/*_scaler.pkl
+saved_models/_cached_metrics.json
