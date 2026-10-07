@@ -1,8 +1,22 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import './PlanInput.css';
-import form_filling from '../../Assets/Plan/form_filling.png';
 import InvestmentResult from './InvestmentResult';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+
+const RISK_OPTIONS = [
+  { value: 'low', label: 'Low', hint: 'Stability first' },
+  { value: 'medium', label: 'Medium', hint: 'Balanced growth' },
+  { value: 'high', label: 'High', hint: 'Max growth' },
+];
+
+const FIELDS = [
+  { name: 'currentAge', label: 'Current Age', placeholder: 'e.g. 30', min: 18, max: 100 },
+  { name: 'retirementAge', label: 'Retirement Age', placeholder: 'e.g. 60', min: 19, max: 100 },
+  { name: 'desiredFund', label: 'Desired Retirement Fund', placeholder: 'e.g. 10000000', min: 1, prefix: '₹' },
+  { name: 'monthlyInvestment', label: 'Monthly Investment', placeholder: 'e.g. 15000', min: 1, prefix: '₹' },
+];
 
 const PlanInput = () => {
   const [formData, setFormData] = useState({
@@ -10,149 +24,178 @@ const PlanInput = () => {
     retirementAge: '',
     desiredFund: '',
     monthlyInvestment: '',
-    riskCategory: ''
+    riskCategory: '',
   });
 
+  const [validationErrors, setValidationErrors] = useState({});
   const [investmentStrategy, setInvestmentStrategy] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const validate = () => {
+    const errors = {};
+    const currentAge = Number(formData.currentAge);
+    const retirementAge = Number(formData.retirementAge);
+    const desiredFund = Number(formData.desiredFund);
+    const monthlyInvestment = Number(formData.monthlyInvestment);
+
+    if (!formData.currentAge || isNaN(currentAge)) errors.currentAge = 'Current age is required.';
+    else if (currentAge < 18 || currentAge > 100) errors.currentAge = 'Must be between 18 and 100.';
+
+    if (!formData.retirementAge || isNaN(retirementAge)) errors.retirementAge = 'Retirement age is required.';
+    else if (retirementAge > 100) errors.retirementAge = 'Must be 100 or less.';
+    else if (currentAge && retirementAge <= currentAge) errors.retirementAge = 'Must be greater than current age.';
+
+    if (!formData.desiredFund || isNaN(desiredFund)) errors.desiredFund = 'Desired fund is required.';
+    else if (desiredFund <= 0) errors.desiredFund = 'Must be greater than 0.';
+
+    if (!formData.monthlyInvestment || isNaN(monthlyInvestment)) errors.monthlyInvestment = 'Monthly investment is required.';
+    else if (monthlyInvestment <= 0) errors.monthlyInvestment = 'Must be greater than 0.';
+
+    if (!formData.riskCategory) errors.riskCategory = 'Please select a risk preference.';
+
+    return errors;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const selectRisk = (value) => {
+    setFormData((prev) => ({ ...prev, riskCategory: value }));
+    if (validationErrors.riskCategory) {
+      setValidationErrors((prev) => ({ ...prev, riskCategory: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors({});
     setLoading(true);
     setError(null);
     try {
-      console.log("Sending request to server with data:", formData);
-      const response = await axios.post('http://127.0.0.1:5000/investment-strategy', formData);
-      console.log("Server response:", response.data);
+      const response = await axios.post(`${API_URL}/investment-strategy`, formData);
       setInvestmentStrategy(response.data);
-    } catch (error) {
-      if (error.response) {
-        console.error("Server responded with an error:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received from server:", error.request);
-      } else {
-        console.error("Error setting up request:", error.message);
-      }
-      console.error("Axios error config:", error.config);
-      setError(error);
+    } catch (err) {
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'An unexpected error occurred. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="body0 cont" id="Home"><div className="body-text"><div>Loading...</div></div></div>;
-  }
-
-  if (error) {
-    return (
-      <div className="body0 cont" id="Home">
-        <div className="body-text">
-          <div>Error: {error.message}</div>
-        </div>
-      </div>
-    );
-  }
+  const handleClearResults = () => {
+    setInvestmentStrategy(null);
+    setError(null);
+  };
 
   return (
-    <div className="body0 cont" id="Home">
-      <div className="body-text">
-        <div className="card form-card">
-          <div className="hero bb">
-            <h3>Plan Your Retirement Smartly</h3>
-            <p>Choose the best investment strategy to achieve your retirement goals.</p>
+    <section className="plan-section cont">
+      <div className="plan-card">
+        {loading && (
+          <div className="plan-overlay" role="status" aria-live="polite">
+            <div className="plan-spinner" />
+            <span>Calculating your strategy…</span>
           </div>
-          <form id="retirementForm" className="cont" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="currentAge">Current Age</label>
-              <input 
-                type="number" 
-                className="form-control" 
-                id="currentAge" 
-                name="currentAge" 
-                placeholder="Enter your current age" 
-                value={formData.currentAge}
-                onChange={handleChange}
-                required 
-              />
+        )}
+
+        <header className="plan-head">
+          <h2>Plan your retirement</h2>
+          <p>Tell us about your goals and we'll build a tailored investment strategy.</p>
+        </header>
+
+        {error && (
+          <div className="plan-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError(null)} aria-label="Dismiss error">×</button>
+          </div>
+        )}
+
+        <form className="plan-form" onSubmit={handleSubmit} noValidate>
+          <div className="plan-fields">
+            {FIELDS.map((f) => (
+              <div className="field" key={f.name}>
+                <label htmlFor={f.name}>{f.label}</label>
+                <div className={`field-input${f.prefix ? ' has-prefix' : ''}${validationErrors[f.name] ? ' invalid' : ''}`}>
+                  {f.prefix && <span className="field-prefix">{f.prefix}</span>}
+                  <input
+                    type="number"
+                    id={f.name}
+                    name={f.name}
+                    placeholder={f.placeholder}
+                    value={formData[f.name]}
+                    onChange={handleChange}
+                    min={f.min}
+                    max={f.max}
+                    aria-invalid={!!validationErrors[f.name]}
+                    aria-describedby={validationErrors[f.name] ? `${f.name}-error` : undefined}
+                  />
+                </div>
+                {validationErrors[f.name] && (
+                  <div id={`${f.name}-error`} className="field-error" role="alert">
+                    {validationErrors[f.name]}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="field">
+            <label>Risk Preference</label>
+            <div
+              className={`risk-group${validationErrors.riskCategory ? ' invalid' : ''}`}
+              role="radiogroup"
+              aria-label="Risk preference"
+            >
+              {RISK_OPTIONS.map((opt) => (
+                <button
+                  type="button"
+                  key={opt.value}
+                  role="radio"
+                  aria-checked={formData.riskCategory === opt.value}
+                  className={`risk-chip risk-${opt.value}${formData.riskCategory === opt.value ? ' selected' : ''}`}
+                  onClick={() => selectRisk(opt.value)}
+                >
+                  <span className="risk-label">{opt.label}</span>
+                  <span className="risk-hint">{opt.hint}</span>
+                </button>
+              ))}
             </div>
-            <div className="form-group">
-              <label htmlFor="retirementAge">Retirement Age</label>
-              <input 
-                type="number" 
-                className="form-control" 
-                id="retirementAge" 
-                name="retirementAge" 
-                placeholder="Enter your retirement age" 
-                value={formData.retirementAge}
-                onChange={handleChange}
-                required 
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="desiredFund">Desired Retirement Fund (in INR)</label>
-              <input 
-                type="number" 
-                className="form-control" 
-                id="desiredFund" 
-                name="desiredFund" 
-                placeholder="Enter your desired retirement fund (in INR)" 
-                value={formData.desiredFund}
-                onChange={handleChange}
-                required 
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="monthlyInvestment">Monthly Investment (in INR)</label>
-              <input 
-                type="number" 
-                className="form-control" 
-                id="monthlyInvestment" 
-                name="monthlyInvestment" 
-                placeholder="Enter your monthly investment (in INR)" 
-                value={formData.monthlyInvestment}
-                onChange={handleChange}
-                required 
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="riskCategory">Risk Preference</label>
-              <select 
-                className="form-control" 
-                id="riskCategory" 
-                name="riskCategory" 
-                value={formData.riskCategory}
-                onChange={handleChange}
-                required
-              >
-                <option value="" disabled>Choose your risk preference</option>
-                <option value="high">High Risk-High Return</option>
-                <option value="medium">Medium Risk-Medium Return</option>
-                <option value="low">Low Risk-Low Return</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <input type="submit" className="btn btn-primary btn-block" value="Submit" />
-            </div>
-          </form>
-          {investmentStrategy && (
+            {validationErrors.riskCategory && (
+              <div className="field-error" role="alert">{validationErrors.riskCategory}</div>
+            )}
+          </div>
+
+          <button type="submit" className="ui-btn ui-btn-primary plan-submit" disabled={loading}>
+            {loading ? 'Calculating…' : 'Generate Strategy'}
+          </button>
+        </form>
+
+        {investmentStrategy && (
+          <>
             <InvestmentResult formData={formData} investmentStrategy={investmentStrategy} />
-          )}
-        </div>
+            <div className="plan-clear">
+              <button type="button" className="ui-btn ui-btn-ghost" onClick={handleClearResults}>
+                Clear Results
+              </button>
+            </div>
+          </>
+        )}
       </div>
-      <div className='body0-img'>
-        <img src={form_filling} alt='form_filling' className='img'/>
-      </div>
-    </div>
+    </section>
   );
 };
 

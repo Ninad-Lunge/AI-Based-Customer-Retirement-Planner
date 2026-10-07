@@ -1,0 +1,85 @@
+# docker-compose for local, production-like runs of the full stack.
+#
+#   docker compose up --build                 # backend + frontend + db
+#   docker compose run --rm jobs python -m jobs seed      # seed universe
+#   docker compose run --rm jobs python -m jobs ingest    # pull OHLCV
+#   docker compose run --rm jobs python -m jobs analyze   # publish metrics version
+#
+# Services:
+#   backend   - Flask API (gunicorn) on :5000 (reads the model/metrics store)
+#   frontend  - React SPA served by nginx on :3000 -> container :80
+#   db        - PostgreSQL 16 (users, profiles, plans, instruments, model store)
+#   jobs      - TensorFlow-FREE offline jobs image (seed/ingest/analyze);
+#               run on demand via `docker compose run jobs ...` (profile: jobs)
+#
+# Postgres credentials here are LOCAL DEV ONLY. Real deployments must source
+# these from a secrets manager (see docs/production-plan/06).
+
+services:
+  backend:
+    build: ./flask-server
+    image: crp-backend:latest
+    environment:
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: "5000"
+      FLASK_DEBUG: "false"
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: "*"
+      DATABASE_URL: postgresql+psycopg://crp:crp_local_dev@db:5432/crp
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./customer_retirement_planner
+      args:
+        # Browser talks to the backend via the host-published port.
+        REACT_APP_API_URL: http://localhost:5000
+    image: crp-frontend:latest
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crp
+      POSTGRES_PASSWORD: crp_local_dev
+      POSTGRES_DB: crp
+    ports:
+      - "5432:5432"
+    volumes:
+      - crp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crp -d crp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jobs:
+    # TensorFlow-FREE offline analytics image. Not started by `up`; run on
+    # demand, e.g.:  docker compose run --rm jobs python -m jobs analyze
+    build:
+      context: ./flask-server
+      dockerfile: Dockerfile.jobs
+    image: crp-jobs:latest
+    environment:
+      DATABASE_URL: postgresql+psycopg://crp:crp_local_dev@db:5432/crp
+      LOG_LEVEL: INFO
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["jobs"]
+
+volumes:
+  crp_pgdata:

@@ -1,53 +1,59 @@
-// Navbar.jsx
-import React,{ useState } from 'react';
-import { NavLink } from 'react-router-dom'; 
-import analytics from '../../Assets/Navbar/analytics.gif';
-import wealthPlan from '../../Assets/Navbar/wealthPlan.png';
-import user from '../../Assets/Navbar/user.gif';
-import notifications from '../../Assets/Navbar/notifications.gif';
-
-import menu from '../../Assets/Navbar/menu.png'
-
-// import { FaCartPlus } from "react-icons/fa";
-
- import './Navbar.css'
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import './Navbar.css';
 
 const Navbar = () => {
-
   const [mobileMenu, setMobileMenu] = useState(false);
-  const toggleMenu = () =>{
-    mobileMenu ? setMobileMenu(false) : setMobileMenu(true);
+  const toggleMenu = () => setMobileMenu((prev) => !prev);
 
-  }
+  const handleMenuKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleMenu();
+    }
+  };
+
+  const linkClass = ({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`;
+
   return (
-    <nav className='cont dark-nav'>
-      <img src={analytics} alt='logo' className='logo'/>
-      <img src={wealthPlan} alt='wealthPlan' className='wealthPlan'/>
-      
-      <ul className={mobileMenu?'':'hide-mobile-menu'}>
-      {/* smooth={true} offset={200} duration={500} */}
-        <li><NavLink to='/' className={(e)=>{return e.isActive?"label-select": ""}} >Home</NavLink> </li>
-        <li><NavLink to='/Plan'   className={(e)=>{return e.isActive?"label-select": ""}} >Plan</NavLink> </li>
-        
-      </ul>
-      <div className='user-noti'>
-        <img src={notifications} alt='logo'/>
-        <img src={user} alt='logo'/>
-         </div>
-      <img src={menu} alt='menu icon' className='menu-icon' onClick={toggleMenu}/>
+    <nav className="nav-root">
+      <div className="nav-inner cont">
+        <NavLink to="/" className="brand" aria-label="WealthPlan home">
+          <span className="brand-mark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 15.5 L9 10.5 L13 13.5 L20 6"
+                stroke="white"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="20" cy="6" r="2.4" fill="white" />
+            </svg>
+          </span>
+          <span className="brand-name">WealthPlan</span>
+        </NavLink>
+
+        <ul className={`nav-links${mobileMenu ? ' open' : ''}`}>
+          <li><NavLink to="/" className={linkClass} onClick={() => setMobileMenu(false)}>Home</NavLink></li>
+          <li><NavLink to="/Plan" className={linkClass} onClick={() => setMobileMenu(false)}>Plan</NavLink></li>
+        </ul>
+
+        <NavLink to="/Plan" className="nav-cta">Get Started</NavLink>
+
+        <button
+          type="button"
+          className="nav-burger"
+          onClick={toggleMenu}
+          onKeyDown={handleMenuKeyDown}
+          aria-label="Toggle navigation menu"
+          aria-expanded={mobileMenu}
+        >
+          <span /><span /><span />
+        </button>
+      </div>
     </nav>
   );
-}
+};
 
 export default Navbar;
-
-
-// function bg(){
-//   return (
-//     <div className='bg'>
-
-//     </div>
-//   );
-// }
-// export {bg};
-

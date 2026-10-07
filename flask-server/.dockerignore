@@ -1,0 +1,15 @@
+# Backend .dockerignore — keep the build context small and the image clean.
+.venv/
+__pycache__/
+*.pyc
+tests/
+.coveragerc
+pytest.ini
+requirements-dev.txt
+.env
+.env.*
+*.log
+
+# Saved LSTM models and the metrics cache are large and environment-specific;
+# they are regenerated at runtime (and, in Phase 2, served from a store).
+saved_models/

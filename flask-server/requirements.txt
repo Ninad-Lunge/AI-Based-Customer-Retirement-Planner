@@ -1,0 +1,22 @@
+flask==3.0.3
+flask-cors==4.0.1
+pydantic-settings==2.5.2
+gunicorn==22.0.0
+# --- Phase 1: persistence & identity ---
+SQLAlchemy==2.0.35
+alembic==1.13.3
+psycopg[binary]==3.2.3
+argon2-cffi==23.1.0
+PyJWT==2.9.0
+# --- engine / data ---
+yfinance==1.7.0
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
+keras==3.4.1
+tensorflow==2.17.0
+joblib==1.4.2
+# --- Phase 3: MPT optimizer (cvxpy 1.5.3 is the last line compatible with
+# numpy<2.0, which TensorFlow 2.17 requires; keep them pinned together) ---
+PyPortfolioOpt==1.5.6
+cvxpy==1.5.3

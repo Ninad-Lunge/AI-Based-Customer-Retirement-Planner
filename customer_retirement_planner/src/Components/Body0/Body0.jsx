@@ -1,25 +1,91 @@
-import React from 'react'
-
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Body0.css';
-import man_img from '../../Assets/Body0/man_img.png';
+
+const FEATURES = [
+  { title: 'AI-Powered', desc: 'LSTM models analyze 5-year trends.' },
+  { title: 'Risk-Tailored', desc: 'Portfolios matched to your appetite.' },
+  { title: 'Goal-Aware', desc: 'Projects whether you hit your target.' },
+];
 
 const Body0 = () => {
+  const navigate = useNavigate();
 
   return (
-    <div  className='body0 cont order' id='Home'>
-        <div className='body0-text'>
-            <h1>"Invest Smarter, Retire Stronger: 
-            Your Future Starts Here!"</h1>
-            <button className='btnn'>Plan Now</button>
-            {/* <button type="button" class="btn btn-primary btn-lg">Large button</button> */}      
+    <section className="hero-section cont">
+      <div className="hero-grid">
+        <div className="hero-copy">
+          <span className="hero-pill">
+            <span className="hero-pill-dot" /> AI retirement planning
+          </span>
+          <h1 className="hero-title">
+            Invest smarter,<br />
+            <span className="hero-title-grad">retire stronger.</span>
+          </h1>
+          <p className="hero-sub">
+            Get a data-driven, risk-tailored investment strategy that charts a clear
+            path to your retirement goal — built on machine-learning price models.
+          </p>
+
+          <div className="hero-actions">
+            <button type="button" className="ui-btn ui-btn-primary" onClick={() => navigate('/Plan')}>
+              Plan Now
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <a className="ui-btn ui-btn-ghost" href="#how-it-works">How it works</a>
+          </div>
+
+          <ul className="hero-features">
+            {FEATURES.map((f) => (
+              <li key={f.title} className="hero-feature">
+                <span className="hero-feature-check" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <div>
+                  <strong>{f.title}</strong>
+                  <span>{f.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className='body0-img'>
-          <img src={man_img} alt='man_img' className='img'/>
-         </div>
-    </div>
-  )
-}
+
+        {/* Decorative, self-contained SVG illustration (no image assets) */}
+        <div className="hero-art" aria-hidden="true">
+          <div className="hero-art-card">
+            <div className="hero-art-head">
+              <span>Projected corpus</span>
+              <span className="hero-art-badge">On track</span>
+            </div>
+            <div className="hero-art-value">₹1.68 Cr</div>
+            <svg className="hero-art-chart" viewBox="0 0 320 140" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 120 C 50 110, 70 70, 110 72 S 180 40, 220 34 S 290 14, 320 8 L 320 140 L 0 140 Z" fill="url(#fillGrad)" />
+              <path d="M0 120 C 50 110, 70 70, 110 72 S 180 40, 220 34 S 290 14, 320 8" fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <div className="hero-art-bars">
+              <span style={{ height: '38%' }} />
+              <span style={{ height: '62%' }} />
+              <span style={{ height: '48%' }} />
+              <span style={{ height: '80%' }} />
+              <span style={{ height: '66%' }} />
+            </div>
+          </div>
+          <div className="hero-art-chip hero-art-chip-1">+16.5% avg return</div>
+          <div className="hero-art-chip hero-art-chip-2">Low · Med · High</div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 export default Body0;
-
-

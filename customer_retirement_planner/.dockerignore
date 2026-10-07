@@ -1,0 +1,8 @@
+# Frontend .dockerignore — exclude dev artefacts from the build context.
+node_modules/
+build/
+coverage/
+.env
+.env.*
+npm-debug.log*
+.git/

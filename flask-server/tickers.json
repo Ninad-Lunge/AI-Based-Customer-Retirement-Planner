@@ -1,0 +1,34 @@
+{
+  "_comment": "Investment universe for the retirement planner. Edit this file to add/remove tickers without touching Python code. Each group's key is the Asset Class label shown in the UI; the value is the list of yfinance ticker symbols. Verify new tickers resolve on yfinance (5y history) before adding.",
+  "groups": {
+    "Indian Equity": [
+      "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+      "KOTAKBANK.NS", "LT.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
+      "HINDUNILVR.NS", "ASIANPAINT.NS", "AXISBANK.NS", "BAJFINANCE.NS",
+      "MARUTI.NS", "M&M.NS", "SUNPHARMA.NS", "HCLTECH.NS", "ONGC.NS",
+      "TITAN.NS", "ULTRACEMCO.NS", "WIPRO.NS", "ADANIGREEN.NS", "DMART.NS"
+    ],
+    "Indian Equity (Growth)": [
+      "TATASTEEL.NS", "ADANIENT.NS", "IRCTC.NS", "DIXON.NS"
+    ],
+    "Indian ETF / Mutual Fund": [
+      "NIFTYBEES.NS", "BANKBEES.NS", "ITBEES.NS", "JUNIORBEES.NS", "LIQUIDBEES.NS"
+    ],
+    "Indian REIT": [
+      "EMBASSY.NS", "MINDSPACE.NS", "BIRET.NS"
+    ],
+    "Gold / Precious Metals": [
+      "GLD", "GOLDBEES.NS", "SLV"
+    ],
+    "Bonds / Fixed Income": [
+      "TLT", "IEF", "BND", "AGG", "LQD", "HYG", "TIP", "SHY", "MUB", "BIV"
+    ],
+    "International ETF": [
+      "QQQ", "VTI", "ARKK", "VWO"
+    ],
+    "Global Index": [
+      "^GSPC", "^DJI", "^IXIC", "^RUT", "^FTSE", "^N225", "^HSI", "^GDAXI",
+      "^FCHI", "^STOXX50E"
+    ]
+  }
+}
